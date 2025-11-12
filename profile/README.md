@@ -18,7 +18,7 @@ Our mission is to make OBS Studio's powerful media processing capabilities easil
 ## 📦 Core Crates
 
 ### [`libobs`](https://crates.io/crates/libobs)
-Low-level Rust bindings to OBS Studio's libobs library. Provides direct access to OBS functionality while maintaining memory safety.
+Low-level Rust bindings to OBS Studio's libobs library. Provides direct access to OBS functionality. Use only if you know what you are doing
 
 ### [`libobs-wrapper`](https://crates.io/crates/libobs-wrapper)
 High-level, idiomatic Rust wrapper around libobs. Offers safe abstractions for common OBS operations like scene management, source creation, and output handling.
