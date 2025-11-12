@@ -71,20 +71,104 @@ use libobs_wrapper::obs::OBSContext;
 use libobs_sources::windows::MonitorCaptureSource;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let obs = OBSContext::new()?;
-    
-    // Create a scene and add a monitor capture source
-    let scene = obs.scene("main_scene");
-    let monitor = MonitorCaptureSource::new("primary_monitor")?;
-    scene.add_source(monitor);
-    
+    let rec_file = ObsPath::from_relative("leak_test_recording.mp4").build();
+    let path_out = PathBuf::from(rec_file.to_string());
+
+
+    let (mut context, mut output) = initialize_obs(rec_file);
+    let mut scene = context.scene("main")?;
+    scene.set_to_channel(0)?;
+
+    let source_name = "test_capture";
+    context
+        .source_builder::<WindowCaptureSourceBuilder, _>(source_name)
+        .unwrap()
+        .set_capture_method(ObsWindowCaptureMethod::MethodAuto)
+        .set_window(&window)
+        .add_to_scene(&mut scene)?;
+
     // Start recording
-    obs.start_recording("output.mp4")?;
+    output.start()?;
+    println!("Recording started");
+
+    // Record for 3 seconds
+    std::thread::sleep(Duration::from_secs(3));
+
+    println!("Recording stop");
+    output.stop()?;
     
     // Your application logic here...
     
     Ok(())
 }
+
+
+pub fn initialize_obs<T: Into<ObsString> + Send + Sync>(rec_file: T) -> (ObsContext, ObsOutputRef) {
+    let _ = env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+        .is_test(true)
+        .try_init();
+
+    #[allow(unused_mut)]
+    let mut context = ObsContext::new(StartupInfo::default()).unwrap();
+
+    // Set up output to ./recording.mp4
+    let mut output_settings = context.data().unwrap();
+    output_settings.set_string("path", rec_file).unwrap();
+
+    let output_name = "output";
+    let output_info = OutputInfo::new("ffmpeg_muxer", output_name, Some(output_settings), None);
+
+    let mut output = context.output(output_info).unwrap();
+
+    // Register the video encoder
+    let mut video_settings = context.data().unwrap();
+    video_settings
+        .bulk_update()
+        .set_int("bf", 0)
+        .set_bool("psycho_aq", true)
+        .set_bool("lookahead", true)
+        .set_string("profile", "high")
+        .set_string("preset", "fast")
+        .set_string("rate_control", "cbr")
+        .set_int("bitrate", 10000)
+        .update()
+        .unwrap();
+
+    let encoders = context.available_video_encoders().unwrap();
+
+    println!(
+        "Available encoders: {:?}",
+        encoders
+            .iter()
+            .map(|e| e.get_encoder_id())
+            .collect::<Vec<_>>()
+    );
+    let mut encoder = encoders
+        .into_iter()
+        .find(|e| {
+            let t = e.get_encoder_id();
+            t == &ObsVideoEncoderType::H264_TEXTURE_AMF
+                || t == &ObsVideoEncoderType::AV1_TEXTURE_AMF
+                || t == &ObsVideoEncoderType::OBS_NVENC_H264_TEX
+        })
+        .unwrap();
+
+    println!("Using encoder {:?}", encoder.get_encoder_id());
+    encoder.set_settings(video_settings);
+    encoder.set_to_output(&mut output, "video_encoder").unwrap();
+
+    // Register the audio encoder
+    let mut audio_settings = context.data().unwrap();
+    audio_settings.set_int("bitrate", 160).unwrap();
+
+    let audio_info =
+        AudioEncoderInfo::new("ffmpeg_aac", "audio_encoder", Some(audio_settings), None);
+
+    output.create_and_set_audio_encoder(audio_info, 0).unwrap();
+
+    (context, output)
+}
+
 ```
 
 ## 🏗️ Architecture
