@@ -263,6 +263,13 @@ This project is licensed under the GPL-3.0 - see individual crate READMEs for sp
 - **The Rust Community** - For creating an incredible ecosystem and tooling
 - **All Contributors** - Every bug report, feature request, and pull request helps make this project better
 
+## Disclaimer
+
+This project is **not affiliated with**, **endorsed by**, or **associated with** the OBS Project or OBS Studio.  
+**OBS** and **OBS Studio** are trademarks of their respective owners.  
+The developers of this project are independent and **not part of the OBS Studio team** in any capacity.
+
+
 ## 🔗 Links
 
 - [GitHub Organization](https://github.com/libobs-rs)
